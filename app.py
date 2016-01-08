@@ -1,12 +1,21 @@
 # Import Flask class from the flask module
-from flask import Flask, render_template, redirect, url_for, request, session, flash, g
+from flask import Flask, render_template, redirect, url_for, request, session, flash
+from flask.ext.sqlalchemy import SQLAlchemy
 from functools import wraps
-import sqlite3
+# import sqlite3
 
+# create the application object
 app = Flask(__name__)
 
-app.secret_key = "impossible to guess"
-app.database = "sample.db"
+# config
+import os
+app.config.from_object(os.environ['APP_SETTINGS'])
+print(os.environ['APP_SETTINGS'])
+
+# create the sqlalchemy object
+db = SQLAlchemy(app)
+
+from models import * # Can only be done once the 'db' has been created.
 
 def login_required(f):
     @wraps(f)
@@ -21,20 +30,21 @@ def login_required(f):
 @app.route('/')
 @login_required
 def home():
-    posts = []
-    try:
-        # return "Hello, world!"
-        g.db = connect_db()
-        cur = g.db.execute('select * from posts')
-        # The below line of code is a one line for loop, and will be uncommented upon
-        # gaining a better understanding a python.
-        # posts = [dict(title=row[0], description=row[1]) for row in cur.fetchall()]
-        for row in cur.fetchall():
-            posts.append(dict(title=row[0], description=row[1]))
-        g.db.close()
-    except sqlite3.OperationalError:
-        flash("You do not have a database, fix that.")
+    posts = db.session.query(BlogPost).all()
     return render_template('index.html', posts=posts)
+    # posts = []
+    # try:
+        # # return "Hello, world!"
+        # g.db = connect_db()
+        # cur = g.db.execute('select * from posts')
+        # # The below line of code is a one line for loop, and will be uncommented upon
+        # # gaining a better understanding a python.
+        # # posts = [dict(title=row[0], description=row[1]) for row in cur.fetchall()]
+        # for row in cur.fetchall():
+            # posts.append(dict(title=row[0], description=row[1]))
+        # g.db.close()
+    # except sqlite3.OperationalError:
+        # flash("You do not have a database, fix that.")
 
 @app.route('/welcome')
 def welcome():
@@ -59,9 +69,9 @@ def logout():
     flash('You were just logged out!')
     return redirect(url_for('welcome'))
 
-def connect_db():
-    return sqlite3.connect(app.database)
+# def connect_db():
+    # return sqlite3.connect('posts.db')
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run()
 
